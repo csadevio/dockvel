@@ -1,0 +1,10 @@
+vendor
+node_modules
+bootstrap/compiled.php
+Homestead.yaml
+.git*
+.env
+Dockerfile
+.dockerignore
+composer.lock
+.build

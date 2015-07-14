@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+
+GITHUB_TOKEN=${GITHUB_TOKEN:?'You need to configure the GITHUB_TOKEN environment variable!'}
+REMOTE_REPOSITORY=${REMOTE_REPOSITORY:?'You need to configure the REMOTE_REPOSITORY environment variable!'}
+REMOTE_BRANCH=${REMOTE_BRANCH:?'You need to configure the REMOTE_BRANCH environment variable!'}
+ARTISAN_CACHE=${ARTISAN_CACHE:?'You need to configure the ARTISAN_CACHE environment variable!'}
+
+set -e
+
+cd ~/clone
+composer config github-oauth.github.com ${GITHUB_TOKEN}
+composer clearcache
+composer install
+composer update
+composer dumpautoload
+composer config github-oauth.github.com unknown
+
+if [ "$ARTISAN_CACHE" = "1" ]; then
+	php artisan cache:clear
+	php artisan route:cache
+	php artisan config:cache
+fi
+
+echo .build >> .gitignore
+echo auth.json >> .gitignore
+echo composer.lock >> .gitignore
+
+cp .build/on_codeship/.dockerignore .dockerignore
+cp .build/on_codeship/Dockerfile Dockerfile
+
+git fetch --unshallow || true
+git push ${REMOTE_REPOSITORY} ${CI_COMMIT_ID}:${REMOTE_BRANCH} ${REMOTE_APPEND} 

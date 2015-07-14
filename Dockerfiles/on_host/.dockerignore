@@ -1,0 +1,7 @@
+Homestead.yaml
+.git*
+.env
+Dockerfile
+.dockerignore
+auth.json
+.build

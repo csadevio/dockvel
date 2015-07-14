@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+# Simple docker image build script running on a (ubuntu)host with docker
+#
+# ARG1 = Path for source
+# ARG2 = Github token for composer download
+# ARG3 = If set it will also add required packages wit apt_get
+#
+
+PATH_SRC=$1
+GITHUB_TOKEN=$2
+EXECUTE_APT_GET=$3
+
+PATH_STARTAT=`pwd`
+if [ "$PATH_SRC" = "" ]; then
+	PATH_SRC=$PATH_STARTAT
+fi
+
+NAME="csadevio/dockvel"
+DOCKER_BIN=/usr/bin/docker
+DOCKER_FILE=$PATH_STARTAT/Dockerfile
+DOCKER_IGNOREFILE=$PATH_STARTAT/.dockerignore
+COMPOSER_PATH=/usr/local/bin
+COMPOSER_BIN=$COMPOSER_PATH/composer
+COMPOSER_CONFIG=$PATH_SRC/composer.json
+
+if [ ! -e "$DOCKER_FILE" ]; then
+	echo "Cannot find $DOCKER_FILE"
+	exit
+fi
+
+if [ ! -e "$DOCKER_BIN" ]; then
+	echo "Cannot find $DOCKER_BIN"
+	exit
+fi
+
+if [ ! -e "$COMPOSER_CONFIG" ]; then
+	echo "Cannot find $COMPOSER_CONFIG"
+	exit
+fi
+
+if [ "$EXECUTE_APT_GET" ]; then
+	apt-get update
+	apt-get upgrade -y
+	apt-get install php5-cli -y
+	apt-get instll curl -y
+fi
+
+if [ ! -e "$COMPOSER_BIN" ]; then
+	curl -sS https://getcomposer.org/installer | php -- --install-dir=$COMPOSER_PATH --filename=composer
+fi
+
+cp $DOCKER_IGNOREFILE $PATH_SRC/.dockerignore
+cp $DOCKER_FILE $PATH_SRC/Dockerfile
+cd $PATH_SRC
+$COMPOSER_BIN clearcache
+$COMPOSER_BIN config github-oauth.github.com $GITHUB_TOKEN
+$COMPOSER_BIN install
+$COMPOSER_BIN update
+php artisan cache:clear
+php artisan route:cache
+php artisan config:cache
+$DOCKER_BIN build --no-cache -t $NAME .
+rm $PATH_SRC/Dockerfile
+rm $PATH_SRC/.dockerignore
+$COMPOSER_BIN clearcache

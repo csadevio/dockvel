@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# Simple build script that builds docker image inside the container
+#
+# ARG1 = Path for source
+# ARG2 = Github token for composer download
+#
+
+PATH_SRC=$1
+GITHUB_TOKEN=$2
+
+PATH_STARTAT=`pwd`
+if [ "$PATH_SRC" = "" ]; then
+	PATH_SRC=$PATH_STARTAT
+fi
+
+NAME="csadevio/dockvel"
+DOCKER_BIN=/usr/bin/docker
+DOCKER_FILE=$PATH_STARTAT/Dockerfile
+DOCKER_IGNOREFILE=$PATH_STARTAT/.dockerignore
+COMPOSER_CONFIG=$PATH_SRC/composer.json
+
+if [ ! -e "$DOCKER_FILE" ]; then
+	echo "Cannot find $DOCKER_FILE"
+	exit
+fi
+
+if [ ! -e "$DOCKER_BIN" ]; then
+	echo "Cannot find $DOCKER_BIN"
+	exit
+fi
+
+if [ ! -e "$COMPOSER_CONFIG" ]; then
+	echo "Cannot find $COMPOSER_CONFIG"
+	exit
+fi
+
+cd $PATH_SRC
+cp $DOCKER_IGNOREFILE .dockerignore
+cat $DOCKER_FILE | sed "s/##GITHUB_TOKEN##/$GITHUB_TOKEN/gi" > Dockerfile
+#echo "#!/bin/sh" > run-build
+echo > run-build
+echo "apt-get update" >> run-build
+echo "apt-get upgrade -y" >> run-build
+echo "apt-get install php5-cli -y" >> run-build
+echo "apt-get install curl -y" >> run-build
+echo "curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer" >> run-build
+echo "cd /srv"
+echo "composer clearcache" >> run-build
+echo "composer config github-oauth.github.com $GITHUB_TOKEN" >> run-build
+echo "composer install" >> run-build
+echo "composer update" >> run-build
+echo "composer dumpautoload" >> run-build
+echo "composer config github-oauth.github.com unknown" >> run-build
+echo "php artisan cache:clear" >> run-build
+echo "php artisan route:cache" >> run-build
+echo "php artisan config:cache" >> run-build
+
+cd $PATH_SRC
+$DOCKER_BIN build --no-cache -t $NAME .
+rm $PATH_SRC/Dockerfile
+rm $PATH_SRC/.dockerignore
+rm $PATH_SRC/run-build
