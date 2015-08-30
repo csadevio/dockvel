@@ -1,4 +1,5 @@
-FROM ubuntu:latest
+#FROM ubuntu:latest
+FROM phusion/baseimage
 ENV PATH_SRV /srv
 ENV PATH_DATA /data
 ENV GITHUB_TOKEN unknown
@@ -28,6 +29,7 @@ RUN composer clearcache
 RUN composer install
 RUN composer update
 RUN composer dumpautoload
+RUN composer config github-oauth.github.com ""
 
 # Execute artisan commands
 RUN php artisan cache:clear
